@@ -8,7 +8,6 @@ from db.all_sales_total import get_sales_totals_batch, get_sales_totals_all
 from db.all_expense_total import get_expense_totals_batch, get_expense_totals_all
 from db.expense_targets import get_expense_target_by_top_category
 from db.divisions import get_divisions
-from db.brands import get_brands
 from modules.header import render_pl_table
 
 # 年度生成
@@ -48,25 +47,16 @@ def show_dashboard():
     months = get_months_in_term(selected_term)
     years = sorted(set(int(m.split("-")[0]) for m in months))
 
-    divisions = get_divisions()
-    brands = get_brands()
+    TARGET_BRAND = "H.A.L. cafe"
+
+    all_divisions = get_divisions()
+    divisions = [d for d in all_divisions if TARGET_BRAND in d]
 
     # --- 仮想集計エントリを動的生成 ---
-    # 「Lia全体合計」は DB 登録不要の動的エントリ
-    # 「店舗合計」は [店舗] を名前に含む事業部が存在する場合に生成
-    # 「〇〇合計」はブランド設定に登録されたブランド名ごとに生成
-    virtual_entries = ["Lia全体合計"]
+    virtual_entries = []
+    if divisions:
+        virtual_entries.append(f"{TARGET_BRAND}合計")
 
-    store_divs = [d for d in divisions if "[店舗]" in d]
-    if store_divs:
-        virtual_entries.append("店舗合計")
-
-    for brand in brands:
-        brand_divs = [d for d in divisions if brand in d]
-        if brand_divs:
-            virtual_entries.append(f"{brand}合計")
-
-    # DB に「Lia全体合計」が残っていても重複しないよう除外してセレクタ構築
     real_divisions = [d for d in divisions if d != "Lia全体合計"]
     divisions_for_select = virtual_entries + real_divisions
 
@@ -84,29 +74,7 @@ def show_dashboard():
         return dict(s_agg), dict(e_agg)
 
     # --- データ取得 ---
-    if selected_div == "Lia全体合計":
-        sales_data = get_sales_totals_all(years)
-        expense_data = get_expense_totals_all(years)
-
-        # 合算処理
-        sales_agg = defaultdict(float)
-        for d in sales_data:
-            key = (d["year"], d["month"], d["tax_rate"])
-            sales_agg[key] += d.get("total_amount", 0)
-
-        expense_agg = defaultdict(float)
-        for d in expense_data:
-            key = (d["year"], d["month"], d["second_category"])
-            expense_agg[key] += d.get("total_cost", 0)
-
-        sales_dict = dict(sales_agg)
-        expense_dict = dict(expense_agg)
-
-    elif selected_div == "店舗合計":
-        target_divs = [d for d in divisions if "[店舗]" in d]
-        sales_dict, expense_dict = aggregate_multi_divisions(target_divs)
-
-    elif selected_div.endswith("合計"):
+    if selected_div.endswith("合計"):
         # 〇〇合計 → ブランド名を含む全事業部を集計
         brand_name = selected_div[:-2]
         target_divs = [d for d in divisions if brand_name in d]
