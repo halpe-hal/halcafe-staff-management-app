@@ -8,7 +8,6 @@ from db.all_sales_total import get_sales_totals_batch, get_sales_totals_all
 from db.all_expense_total import get_expense_totals_batch, get_expense_totals_all
 from db.expense_targets import get_expense_target_by_top_category
 from db.divisions import get_divisions
-from db.brands import get_brands
 from modules.header import render_pl_table
 
 # 年度生成
@@ -48,20 +47,15 @@ def show_dashboard_excluding_tax():
     months = get_months_in_term(selected_term)
     years = sorted(set(int(m.split("-")[0]) for m in months))
 
-    divisions = get_divisions()
-    brands = get_brands()
+    TARGET_BRAND = "H.A.L. cafe"
+
+    all_divisions = get_divisions()
+    divisions = [d for d in all_divisions if TARGET_BRAND in d]
 
     # --- 仮想集計エントリを動的生成 ---
-    virtual_entries = ["Lia全体合計"]
-
-    store_divs = [d for d in divisions if "[店舗]" in d]
-    if store_divs:
-        virtual_entries.append("店舗合計")
-
-    for brand in brands:
-        brand_divs = [d for d in divisions if brand in d]
-        if brand_divs:
-            virtual_entries.append(f"{brand}合計")
+    virtual_entries = []
+    if divisions:
+        virtual_entries.append(f"{TARGET_BRAND}合計")
 
     real_divisions = [d for d in divisions if d != "Lia全体合計"]
     divisions_for_select = virtual_entries + real_divisions
