@@ -4,7 +4,7 @@ import streamlit as st
 st.set_page_config(page_title="管理会計", layout="wide")
 
 from auth import check_login, logout
-from modules import dashboard, header, dashboard_excluding_tax
+from modules import header, dashboard_excluding_tax
 
 # --- セッション初期化 ---
 if "menu" not in st.session_state:
